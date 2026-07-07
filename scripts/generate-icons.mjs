@@ -1,0 +1,52 @@
+// Gera os ícones do PWA a partir de um SVG (bola + moldura de figurinha).
+// Uso: npm run icons
+import sharp from 'sharp'
+import { mkdirSync, writeFileSync } from 'node:fs'
+
+mkdirSync('public', { recursive: true })
+
+function art({ radius = 96, scale = 1 } = {}) {
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0a5c3f"/><stop offset="1" stop-color="#073f2b"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f6d365"/><stop offset="1" stop-color="#c9962f"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="${radius}" fill="url(#bg)"/>
+  <g transform="translate(256 256) scale(${scale}) translate(-256 -256)">
+    <rect x="52" y="52" width="408" height="408" rx="28" fill="none" stroke="url(#gold)"
+      stroke-width="14" stroke-dasharray="30 20" stroke-linecap="round"/>
+    <circle cx="256" cy="212" r="104" fill="#ffffff"/>
+    <path d="M256 158l51 37-19 60h-64l-19-60z" fill="#111111"/>
+    <g fill="#111111">
+      <path d="M256 108l14 26-14 11-14-11z"/>
+      <path d="M355 180l4 29-17 6-8-16z"/>
+      <path d="M157 180l21 19-8 16-17-6z"/>
+      <path d="M312 300l-14 26h-19l-4-17z"/>
+      <path d="M200 300l37 9-4 17h-19z"/>
+    </g>
+    <text x="256" y="440" text-anchor="middle" font-family="Arial, Helvetica, sans-serif"
+      font-size="96" font-weight="bold" letter-spacing="4" fill="url(#gold)">2026</text>
+  </g>
+</svg>`
+}
+
+const jobs = [
+  ['public/pwa-192.png', art(), 192],
+  ['public/pwa-512.png', art(), 512],
+  // maskable: fundo cobre tudo, conteúdo reduzido para a zona segura (~80%)
+  ['public/pwa-512-maskable.png', art({ radius: 0, scale: 0.78 }), 512],
+  // iOS aplica o próprio arredondamento — fundo quadrado
+  ['public/apple-touch-icon.png', art({ radius: 0 }), 180],
+]
+
+for (const [file, svg, px] of jobs) {
+  await sharp(Buffer.from(svg)).resize(px, px).png().toFile(file)
+  console.log('ok', file)
+}
+
+writeFileSync('public/favicon.svg', art())
+console.log('ok public/favicon.svg')
