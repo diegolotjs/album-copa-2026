@@ -1,4 +1,5 @@
-import { useRef, useState, type ChangeEvent } from 'react'
+import { useEffect, useRef, useState, type ChangeEvent } from 'react'
+import { createPortal } from 'react-dom'
 import { createSnapshot, downloadExport, parseImport } from '../lib/backup'
 import { replaceLocalItems } from '../lib/db'
 import { markDirty } from '../lib/sync'
@@ -8,15 +9,55 @@ import { useAlbum } from '../store/album'
 import { useAuth } from '../store/auth'
 import type { ItemMap } from '../lib/types'
 
+/**
+ * Drawer de ajustes num PORTAL para o <body>: dentro do header (que tem
+ * backdrop-blur) um position:fixed seria posicionado em relação ao header,
+ * não à tela — era o bug do painel "preso" no topo no iPhone.
+ */
 export default function SettingsSheet({ onClose }: { onClose: () => void }) {
   const setView = useAlbum((s) => s.setView)
   const session = useAuth((s) => s.session)
   const signOut = useAuth((s) => s.signOut)
   const fileRef = useRef<HTMLInputElement>(null)
+  const closeRef = useRef<HTMLButtonElement>(null)
   const [resetText, setResetText] = useState('')
   const [showReset, setShowReset] = useState(false)
 
   const userId = session?.user.id ?? null
+
+  // Esc fecha (desktop)
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onClose])
+
+  // Trava o scroll do fundo enquanto o modal está aberto.
+  // body { position: fixed } é a única técnica confiável no iOS Safari.
+  useEffect(() => {
+    const y = window.scrollY
+    const prev = {
+      position: document.body.style.position,
+      top: document.body.style.top,
+      width: document.body.style.width,
+    }
+    document.body.style.position = 'fixed'
+    document.body.style.top = `-${y}px`
+    document.body.style.width = '100%'
+    return () => {
+      document.body.style.position = prev.position
+      document.body.style.top = prev.top
+      document.body.style.width = prev.width
+      window.scrollTo(0, y)
+    }
+  }, [])
+
+  // Foco inicial no botão de fechar (leitores de tela anunciam o diálogo)
+  useEffect(() => {
+    closeRef.current?.focus()
+  }, [])
 
   async function applyItems(items: ItemMap, snapshotReason: string, doneMsg: string) {
     if (userId) await createSnapshot(userId, useAlbum.getState().items, snapshotReason)
@@ -48,16 +89,30 @@ export default function SettingsSheet({ onClose }: { onClose: () => void }) {
     await applyItems(cleared, 'pré-zerar', 'Álbum zerado.')
   }
 
-  return (
-    <div className="fixed inset-0 z-40 flex items-end justify-center bg-black/60" onClick={onClose}>
+  return createPortal(
+    <div
+      className="fixed inset-0 z-40 flex items-end justify-center bg-black/60"
+      onClick={onClose}
+    >
       <div
         role="dialog"
+        aria-modal="true"
         aria-label="Ajustes"
         onClick={(e) => e.stopPropagation()}
-        className="safe-bottom w-full max-w-lg space-y-2 rounded-t-2xl bg-pitch-700 p-4 text-white shadow-2xl"
+        className="safe-bottom max-h-[85dvh] w-full max-w-lg space-y-2 overflow-y-auto rounded-t-2xl bg-pitch-700 p-4 text-white shadow-2xl"
       >
         <div className="mx-auto mb-1 h-1 w-10 rounded-full bg-white/30" />
-        <h2 className="font-display text-xl font-bold">Ajustes</h2>
+        <div className="flex items-center justify-between">
+          <h2 className="font-display text-xl font-bold">Ajustes</h2>
+          <button
+            ref={closeRef}
+            type="button"
+            onClick={onClose}
+            className="min-h-11 rounded-lg bg-white/10 px-4 text-sm font-semibold hover:bg-white/15"
+          >
+            ✕ Fechar
+          </button>
+        </div>
 
         <button type="button" className={btn} onClick={() => { setView('backups'); onClose() }}>
           ☁️ Backups (snapshots na nuvem)
@@ -126,7 +181,8 @@ export default function SettingsSheet({ onClose }: { onClose: () => void }) {
           Álbum Copa 2026 · v1.0.0 · dados locais + nuvem
         </p>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }
 

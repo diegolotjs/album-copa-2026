@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { useAlbum, type Tab } from '../store/album'
 import type { SyncStatus } from '../lib/types'
 import StatsPanel from './StatsPanel'
@@ -33,6 +33,13 @@ export default function Header() {
   const setView = useAlbum((s) => s.setView)
   const status = useAlbum((s) => s.status)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const gearRef = useRef<HTMLButtonElement>(null)
+
+  // Ao fechar, devolve o foco para a engrenagem (acessibilidade)
+  const closeSettings = useCallback(() => {
+    setSettingsOpen(false)
+    gearRef.current?.focus()
+  }, [])
 
   const st = STATUS_LABEL[status]
 
@@ -46,9 +53,11 @@ export default function Header() {
               {st.text}
             </span>
             <button
+              ref={gearRef}
               type="button"
-              aria-label="Ajustes e backups"
-              onClick={() => setSettingsOpen(true)}
+              aria-label={settingsOpen ? 'Fechar ajustes' : 'Ajustes e backups'}
+              aria-expanded={settingsOpen}
+              onClick={() => (settingsOpen ? closeSettings() : setSettingsOpen(true))}
               className="flex size-11 items-center justify-center rounded-full text-lg hover:bg-white/10"
             >
               ⚙️
@@ -104,7 +113,7 @@ export default function Header() {
           </button>
         )}
       </div>
-      {settingsOpen && <SettingsSheet onClose={() => setSettingsOpen(false)} />}
+      {settingsOpen && <SettingsSheet onClose={closeSettings} />}
     </header>
   )
 }
