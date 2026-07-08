@@ -38,13 +38,18 @@ npm run icons      # regenera os ícones do PWA (scripts/generate-icons.mjs)
    recomendada).
 2. No **SQL Editor**, cole e execute o conteúdo de `supabase/schema.sql`
    (cria `collections` e `snapshots` com Row Level Security).
-3. Em **Authentication → URL Configuration**:
-   - Site URL: `https://SEU-APP.vercel.app`
-   - Additional Redirect URLs: `http://localhost:5173`
-4. Em **Project Settings → API**, copie:
+3. Em **Authentication → Emails → Magic Link**, garanta que o template
+   contém `{{ .Token }}` — é ele que coloca o **código de 6 dígitos** no
+   e-mail. O login do app é por código OTP (não depende do link), porque no
+   PWA instalado no iPhone o link abriria no Safari, cujo storage é separado
+   do app. Sugestão de template:
+   `<p>Seu código de acesso: <b>{{ .Token }}</b></p>`
+4. Em **Authentication → URL Configuration**, mantenha a Site URL apontando
+   para `https://SEU-APP.vercel.app` (boa prática, mesmo sem o fluxo de link).
+5. Em **Project Settings → API**, copie:
    - `Project URL` → `VITE_SUPABASE_URL`
    - `anon public` key → `VITE_SUPABASE_ANON_KEY`
-5. Coloque os valores em `.env.local` (local) e nas Environment Variables da
+6. Coloque os valores em `.env.local` (local) e nas Environment Variables da
    Vercel (produção).
 
 > **Hibernação do plano grátis:** projetos Supabase gratuitos são pausados
@@ -82,7 +87,8 @@ cache do service worker. Regras ao evoluir o app:
 ## Instalar no iPhone
 
 1. Abra a URL do app no **Safari**.
-2. Faça login (link mágico por e-mail — abra o e-mail no próprio iPhone).
+2. Faça login: digite o e-mail, pegue o **código de 6 dígitos** que chega na
+   caixa de entrada e digite no app.
 3. Toque em **Compartilhar** (quadrado com seta) → **Adicionar à Tela de
    Início** → **Adicionar**.
 4. Abra pelo ícone: tela cheia, funciona offline e sincroniza quando conectar.
